@@ -1,4 +1,5 @@
 import logging
+import time
 from logging.handlers import RotatingFileHandler
 from typing import Any, Dict
 
@@ -10,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import settings
 from database.manager import get_db, get_user_by_name, sessionmanager
 from models.schema import TokenData
+
+logger = logging.getLogger(__name__)
 
 
 def init_logger() -> None:
@@ -43,6 +46,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 async def get_current_user(
     token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
 ) -> dict:
+    logger.info("")
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -52,6 +56,11 @@ async def get_current_user(
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
+        logger.info("payload: %s", payload)
+        exp: str = payload.get("exp")
+        if exp:
+            if exp < int(time.time()):
+                raise credentials_exception
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception

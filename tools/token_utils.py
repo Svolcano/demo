@@ -1,3 +1,5 @@
+import datetime as DT
+import logging
 from datetime import datetime, timedelta
 from typing import Optional, Union
 
@@ -8,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import settings
 from database.manager import get_user_by_name
 from database.tables import TUser
+
+logger = logging.getLogger(__name__)
 
 
 def get_password_hash(password):
@@ -31,10 +35,13 @@ def create_access_token(
 ) -> str:
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.now() + expires_delta
+        expire = datetime.now(DT.UTC) + expires_delta
     else:
-        expire = datetime.now() + timedelta(minutes=15)
+        expire = datetime.now(DT.UTC) + timedelta(
+            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        )
     to_encode.update({"exp": expire})
+    logger.info("to_endcode: %s", to_encode)
     encoded_jwt = jwt.encode(
         to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
     )
